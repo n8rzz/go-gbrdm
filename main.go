@@ -2,21 +2,25 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"log"
 	"os/exec"
+	"strings"
 )
 
 func main() {
-	var (
-		cmdOut []byte
-		err    error
-	)
-	cmdName := "git"
-	cmdArgs := []string{"branch"}
-	if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	out, err := exec.Command("git", "branch").Output()
+
+	if err != nil {
+		log.Fatalf("cmd.Output() failed with %s\n", err)
 	}
 
-	fmt.Println(string(cmdOut))
+	str := string(out)
+	trimmedStr := strings.TrimRight(str, "\n")
+	result := strings.Split(trimmedStr, "\n")
+
+	for i := range result {
+		fmt.Printf("\n%v - %v\n", i, result[i])
+	}
+
+	fmt.Println(len(result))
 }
