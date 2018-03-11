@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -34,35 +36,65 @@ func (gbc *GitBranchCollection) RawnameList() []string {
 	return rl
 }
 
-var collection GitBranchCollection
-
-func init() {
-	run()
-}
+var (
+	collection GitBranchCollection
+	selection  []string
+)
 
 func main() {
 	shell := ishell.New()
 
 	shell.AddCmd(&ishell.Cmd{
-		Name: "select-branches",
+		Name: "selectBranches",
 		Help: "",
 		Func: func(c *ishell.Context) {
 			branches := collection.RawnameList()
 			choices := c.Checklist(branches,
 				"Which branches would you like to remove ?",
 				nil)
-			out := func() (c []string) {
-				for _, v := range choices {
-					c = append(c, branches[v])
-				}
-				return
+
+			for _, v := range choices {
+				selection = append(selection, branches[v])
 			}
-			c.Println("Your choices are", strings.Join(out(), ", "))
+
+			shouldDelete := verifyRemoval(c, selection)
+
+			if !shouldDelete {
+				os.Exit(0)
+			}
+
+			processBranchRemovals(selection)
 		},
 	})
 
 	// run shell
-	shell.Process("select-branches")
+	shell.Process("selectBranches")
+}
+
+func verifyRemoval(c *ishell.Context, selection []string) bool {
+	c.Println("Do you really want to remove: \n\n", strings.Join(selection, ", "))
+
+	c.Print("\nyes/no (y/n): ")
+	response := c.ReadLine()
+
+	return response == "yes" || response == "y" || response == ""
+}
+
+func processBranchRemovals(selection []string) {
+	for i := range selection {
+		branch := selection[i]
+
+		fmt.Printf("Removing branch: %v\n", branch)
+		_, err := exec.Command("git", "branch", "-D", branch).Output()
+
+		if err != nil {
+			log.Fatalf("cmd.Output() failed with %s\n", err)
+		}
+	}
+}
+
+func init() {
+	run()
 }
 
 func run() {
