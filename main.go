@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os/exec"
 	"strings"
+
+	"github.com/abiosoft/ishell"
 )
 
 // GitBranch is a representation of a single git branch
@@ -22,6 +23,17 @@ func (gbc *GitBranchCollection) AddItem(gitBranch GitBranch) {
 	gbc.items = append(gbc.items, gitBranch)
 }
 
+// RawnameList produces an array of `GitBranch#Rawname` values
+func (gbc *GitBranchCollection) RawnameList() []string {
+	var rl []string
+
+	for i := range gbc.items {
+		rl = append(rl, gbc.items[i].Rawname)
+	}
+
+	return rl
+}
+
 var collection GitBranchCollection
 
 func init() {
@@ -29,8 +41,28 @@ func init() {
 }
 
 func main() {
-	fmt.Printf("%v \n\n\n", collection.items)
-	fmt.Print("Now were ready...")
+	shell := ishell.New()
+
+	shell.AddCmd(&ishell.Cmd{
+		Name: "select-branches",
+		Help: "",
+		Func: func(c *ishell.Context) {
+			branches := collection.RawnameList()
+			choices := c.Checklist(branches,
+				"Which branches would you like to remove ?",
+				nil)
+			out := func() (c []string) {
+				for _, v := range choices {
+					c = append(c, branches[v])
+				}
+				return
+			}
+			c.Println("Your choices are", strings.Join(out(), ", "))
+		},
+	})
+
+	// run shell
+	shell.Process("select-branches")
 }
 
 func run() {
