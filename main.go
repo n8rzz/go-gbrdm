@@ -10,34 +10,39 @@ import (
 	"github.com/abiosoft/ishell"
 )
 
-// GitBranch is a representation of a single git branch
-type GitBranch struct {
-	Rawname string
+// gitBranch is a representation of a single git branch
+type gitBranch struct {
+	rawname  string
+	isActive bool
 }
 
-// GitBranchCollection is a Collection object of `GitBranch` instances
-type GitBranchCollection struct {
-	items []GitBranch
+// gitBranchCollection is a Collection object of `gitBranch` instances
+type gitBranchCollection struct {
+	items []gitBranch
 }
 
-// AddItem `GitBranch` instance to collection
-func (gbc *GitBranchCollection) AddItem(gitBranch GitBranch) {
+// AddItem `gitBranch` instance to collection
+func (gbc *gitBranchCollection) AddItem(gitBranch gitBranch) {
 	gbc.items = append(gbc.items, gitBranch)
 }
 
-// RawnameList produces an array of `GitBranch#Rawname` values
-func (gbc *GitBranchCollection) RawnameList() []string {
+// RawnameList produces an array of `gitBranch#rawname` values
+func (gbc *gitBranchCollection) RawnameList() []string {
 	var rl []string
 
 	for i := range gbc.items {
-		rl = append(rl, gbc.items[i].Rawname)
+		branch := gbc.items[i]
+
+		if !branch.isActive {
+			rl = append(rl, branch.rawname)
+		}
 	}
 
 	return rl
 }
 
 var (
-	collection GitBranchCollection
+	collection gitBranchCollection
 	selection  []string
 )
 
@@ -74,8 +79,8 @@ func main() {
 func verifyRemoval(c *ishell.Context, selection []string) bool {
 	c.Println("Do you really want to remove: \n\n", strings.Join(selection, ", "))
 
-	c.Print("\nyes/no (y/n): ")
-	response := c.ReadLine()
+	c.Print("\n(Y/n): ")
+	response := strings.ToLower(c.ReadLine())
 
 	return response == "yes" || response == "y" || response == ""
 }
@@ -98,19 +103,19 @@ func init() {
 }
 
 func run() {
+	branchList := readLocalGitBranchList()
+
+	hydrateBranchCollection(branchList)
+}
+
+func readLocalGitBranchList() []string {
 	out, err := exec.Command("git", "branch").Output()
 
 	if err != nil {
 		log.Fatalf("cmd.Output() failed with %s\n", err)
 	}
 
-	branchList := readLocalGitBranchList(out)
-
-	hydrateBranchCollection(branchList)
-}
-
-func readLocalGitBranchList(cmdOut []byte) []string {
-	str := string(cmdOut)
+	str := string(out)
 	trimmedStr := strings.TrimRight(str, "\n")
 	localGitBranchList := strings.Split(trimmedStr, "\n")
 
@@ -120,7 +125,8 @@ func readLocalGitBranchList(cmdOut []byte) []string {
 func hydrateBranchCollection(branchList []string) {
 	for i := range branchList {
 		s := strings.TrimLeft(branchList[i], " ")
-		gb := GitBranch{s}
+		isActive := strings.Contains(s, "*")
+		gb := gitBranch{s, isActive}
 
 		collection.AddItem(gb)
 	}
