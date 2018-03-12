@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/abiosoft/ishell"
+	"github.com/fatih/color"
 )
 
 // gitBranch is a representation of a single git branch
@@ -77,19 +78,31 @@ func main() {
 }
 
 func verifyRemoval(c *ishell.Context, selection []string) bool {
-	c.Println("Do you really want to remove: \n\n", strings.Join(selection, ", "))
+	yellowWriter := color.New(color.FgYellow).PrintfFunc()
 
+	if len(selection) == 0 {
+		yellowWriter("\nNo branches selected, exiting...\n")
+		os.Exit(1)
+	}
+
+	c.Println("Do you really want to remove:")
+	yellowWriter("\n%v\n", strings.Join(selection, ", "))
 	c.Print("\n(Y/n): ")
+
 	response := strings.ToLower(c.ReadLine())
 
 	return response == "yes" || response == "y" || response == ""
 }
 
 func processBranchRemovals(selection []string) {
+	redWriter := color.New(color.FgRed).PrintfFunc()
+	fmt.Println("\nRemoving branch(s): ")
+
 	for i := range selection {
 		branch := selection[i]
 
-		fmt.Printf("Removing branch: %v\n", branch)
+		redWriter("%v\n", branch)
+
 		_, err := exec.Command("git", "branch", "-D", branch).Output()
 
 		if err != nil {
